@@ -1,3 +1,4 @@
+# This is my adapted version for my FTX Kanyon, using gear shift to control the lights, an my own setup for a single gear to make the engine sound correct for when I am using a crawler course.
 # This is an Arduino RC engine sound & light controller for ESP32
 It's based on the ATmega 328 version: https://github.com/TheDIYGuy999/Rc_Engine_Sound
 and on bitlunis Halloween example: https://github.com/bitluni/MotionPumpkin
