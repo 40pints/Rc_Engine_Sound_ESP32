@@ -275,7 +275,7 @@ const uint8_t shakerStop = 60; // Shaker power while engine stop (max. 255, abou
 const boolean engineManualOnOff = false;
 
 // Engine RPM range (2 for big Diesels, 4 for fast running motors)
-const uint32_t TOP_SPEED_MULTIPLIER = 3; // TSM. RPM multiplier: the bigger the number, the larger the rev range, 2 - 4 is a good place to start. ESP32 will crash, if > 5 @ 22'050Hz!
+const uint32_t TOP_SPEED_MULTIPLIER = 2; // TSM. RPM multiplier: the bigger the number, the larger the rev range, 2 - 4 is a good place to start. ESP32 will crash, if > 5 @ 22'050Hz!
 
 // Engine mass simulation
 const int8_t acc = 5; // Acceleration step (2) 1 = slow for locomotive engine, 9 = fast for trophy truck
