@@ -30,7 +30,7 @@ const float codeVersion = 4.4; // Software revision.
 //#define DEBUG // uncomment it for general debugging informations
 //#define SERIAL_DEBUG // uncomment it to debug the serial command interface on pin 36
 //#define SBUS_DEBUG // uncomment it to debug the SBUS command interface on pin 36
-//#define DRIVE_STATE_DEBUG // uncomment it to debug the drive state statemachine
+#define DRIVE_STATE_DEBUG // uncomment it to debug the drive state statemachine
 //#define DRIVE_AUTO_TRANS_DEBUG // uncomment it to debug the automatic transmission
 
 // TODO = Things to clean up!
@@ -46,7 +46,7 @@ const float codeVersion = 4.4; // Software revision.
 
 // Libraries (you have to install all of them)
 #include <statusLED.h> // https://github.com/TheDIYGuy999/statusLED <<------- Install the newest version!
-#include "SBUS.h" // https://github.com/TheDIYGuy999/SBUS you need to install my fork of this library!
+//#include "SBUS.h" // https://github.com/TheDIYGuy999/SBUS you need to install my fork of this library!
 
 //
 // =======================================================================================================
@@ -145,6 +145,8 @@ volatile boolean sound1On = false;              // Signal for sound1  on / off
 volatile boolean indicatorSoundOn = false;      // active, if indicator bulb is on
 
 volatile boolean lightsOn = false;              // Lights on
+volatile boolean lightsSwitchOn = false;        // Lights Switch On <-- additional by me, CH5 from transmitter, will decide if the lights should be on
+volatile boolean roofLightsOn = false;          // Roof lights on <-- additional by me, CH5 from transmitter, will decide if the roof lights should be on																																					  
 
 volatile boolean airBrakeTrigger = false;       // Trigger for air brake noise
 volatile boolean parkingBrakeTrigger = false;   // Trigger for air parking brake noise
@@ -235,12 +237,12 @@ volatile unsigned long timelast;
 unsigned long timelastloop;
 
 // SBUS signal processing variables
-SBUS x8r(Serial2); // SBUS object on Serial 2 port
+//SBUS x8r(Serial2); // SBUS object on Serial 2 port
 // channel, fail safe, and lost frames data
-uint16_t SBUSchannels[16];
-bool SBUSfailSafe;
-bool SBUSlostFrame;
-bool sbusInit;
+//uint16_t SBUSchannels[16];
+//bool SBUSfailSafe;
+//bool SBUSlostFrame;
+//bool sbusInit;
 
 // Sampling intervals for interrupt timer (adjusted according to your sound file sampling rate)
 uint32_t maxSampleInterval = 4000000 / sampleRate;
@@ -715,9 +717,9 @@ void setup() {
   // Serial setup
   Serial.begin(115200); // USB serial (for DEBUG)
 
-#ifdef SBUS_COMMUNICATION
-  x8r.begin(COMMAND_RX, COMMAND_TX, sbusInverted); // begin SBUS communication with compatible receivers
-#endif
+//#ifdef SBUS_COMMUNICATION
+//  x8r.begin(COMMAND_RX, COMMAND_TX, sbusInverted); // begin SBUS communication with compatible receivers
+//#endif
 
 #ifdef SERIAL_COMMUNICATION
   Serial2.begin(115200, SERIAL_8N1, COMMAND_RX, COMMAND_TX); // begin Serial communication with "Micro RC" receiver
@@ -1021,74 +1023,74 @@ void readRcSignals() {
 // =======================================================================================================
 //
 
-void readSbusCommands() {
-  // Signals are coming in via SBUS protocol
-
-  static unsigned long lastSbusFailsafe;
-
-  // look for a good SBUS packet from the receiver
-  if (x8r.read(&SBUSchannels[0], &SBUSfailSafe, &SBUSlostFrame)) {
-    sbusInit = true;
-    lastSbusFailsafe = millis();
-  }
-
-  if (!failSafe) { // Only transfer data to the pulseWidth[] variables, if no SBUS failsafe error!
-
-    // Note: if you want to change the channel map, change the index [X] of "SBUSchannels" to fit your needs
-
-    // Proportional channels
-    pulseWidth[0] = map(SBUSchannels[0], 172, 1811, 1000, 2000) ; // CH1 Steering
-    pulseWidth[1] = map(SBUSchannels[1], 172, 1811, 1000, 2000) ; // CH2 Gearbox
-    pulseWidth[2] = map(SBUSchannels[2], 172, 1811, 1000, 2000) ; // CH3 Throttle
-    //pulseWidth[4] = map(SBUSchannels[3], 172, 1811, 1000, 2000) ; // CH4
-    pulseWidth[3] = map(SBUSchannels[4], 172, 1811, 1000, 2000) ; // Pot1 Horn
-
-    // Switches etc.
-    if (SBUSchannels[5] < 272) mode1 = false; if (SBUSchannels[5] > 1711) mode1 = true; // Mode 1 state
-    if (SBUSchannels[6] < 272) mode2 = false; if (SBUSchannels[6] > 1711) mode2 = true; // Mode 2 state
-    if (SBUSchannels[7] < 272) momentary1 = false; if (SBUSchannels[7] > 1711) momentary1 = true; // Momentary button
-    if (SBUSchannels[8] < 272) hazard = false; if (SBUSchannels[8] > 1711) hazard = true; // Hazard lights
-    if (SBUSchannels[9] < 272) left = false; if (SBUSchannels[9] > 1711) left = true; // Left indicator
-    if (SBUSchannels[10] < 272) right = false; if (SBUSchannels[10] > 1711) right = true; // Right indicator
-  }
-
-  // Failsafe triggering (works, if SBUS wire is unplugged, but SBUSfailSafe signal from the receiver is untested!)
-  if (millis() - lastSbusFailsafe > 50 && !SBUSfailSafe) failSafe = true; // if timeout (signal loss)
-  else failSafe = false;
-
-
-  // Print debug infos
-  static unsigned long printSbusMillis;
-#ifdef SBUS_DEBUG // can slow down the playback loop!
-  if (millis() - printSbusMillis > 1000) { // Every 1000ms
-    printSbusMillis = millis();
-
-    Serial.println("SBUS DEBUG:");
-    Serial.println(pulseWidth[0]);
-    Serial.println(pulseWidth[1]);
-    Serial.println(pulseWidth[2]);
-    Serial.println(pulseWidth[3]);
-    Serial.println(pulseWidth[4]);
-    Serial.println(mode1);
-    Serial.println(mode2);
-    Serial.println(momentary1);
-    Serial.println(hazard);
-    Serial.println(left);
-    Serial.println(right);
-
-    Serial.println(SBUSfailSafe);
-    Serial.println(SBUSlostFrame);
-
-    Serial.println(failSafe);
-  }
-#endif
-
-  // Invert RC signals
-  invertRcSignals();
-
-  // Falisafe for RC signals
-  failsafeRcSignals();
-}
+//void readSbusCommands() {
+//  // Signals are coming in via SBUS protocol
+//
+//  static unsigned long lastSbusFailsafe;
+//
+//  // look for a good SBUS packet from the receiver
+//  if (x8r.read(&SBUSchannels[0], &SBUSfailSafe, &SBUSlostFrame)) {
+//    sbusInit = true;
+//    lastSbusFailsafe = millis();
+//  }
+//
+//  if (!failSafe) { // Only transfer data to the pulseWidth[] variables, if no SBUS failsafe error!
+//
+//    // Note: if you want to change the channel map, change the index [X] of "SBUSchannels" to fit your needs
+//
+//    // Proportional channels
+//    pulseWidth[0] = map(SBUSchannels[0], 172, 1811, 1000, 2000) ; // CH1 Steering
+//    pulseWidth[1] = map(SBUSchannels[1], 172, 1811, 1000, 2000) ; // CH2 Gearbox
+//    pulseWidth[2] = map(SBUSchannels[2], 172, 1811, 1000, 2000) ; // CH3 Throttle
+//    //pulseWidth[4] = map(SBUSchannels[3], 172, 1811, 1000, 2000) ; // CH4
+//    pulseWidth[3] = map(SBUSchannels[4], 172, 1811, 1000, 2000) ; // Pot1 Horn
+//
+//    // Switches etc.
+//    if (SBUSchannels[5] < 272) mode1 = false; if (SBUSchannels[5] > 1711) mode1 = true; // Mode 1 state
+//    if (SBUSchannels[6] < 272) mode2 = false; if (SBUSchannels[6] > 1711) mode2 = true; // Mode 2 state
+//    if (SBUSchannels[7] < 272) momentary1 = false; if (SBUSchannels[7] > 1711) momentary1 = true; // Momentary button
+//    if (SBUSchannels[8] < 272) hazard = false; if (SBUSchannels[8] > 1711) hazard = true; // Hazard lights
+//    if (SBUSchannels[9] < 272) left = false; if (SBUSchannels[9] > 1711) left = true; // Left indicator
+//    if (SBUSchannels[10] < 272) right = false; if (SBUSchannels[10] > 1711) right = true; // Right indicator
+//  }
+//
+//  // Failsafe triggering (works, if SBUS wire is unplugged, but SBUSfailSafe signal from the receiver is untested!)
+//  if (millis() - lastSbusFailsafe > 50 && !SBUSfailSafe) failSafe = true; // if timeout (signal loss)
+//  else failSafe = false;
+//
+//
+//  // Print debug infos
+//  static unsigned long printSbusMillis;
+//#ifdef SBUS_DEBUG // can slow down the playback loop!
+//  if (millis() - printSbusMillis > 1000) { // Every 1000ms
+//    printSbusMillis = millis();
+//
+//    Serial.println("SBUS DEBUG:");
+//    Serial.println(pulseWidth[0]);
+//    Serial.println(pulseWidth[1]);
+//    Serial.println(pulseWidth[2]);
+//    Serial.println(pulseWidth[3]);
+//    Serial.println(pulseWidth[4]);
+//    Serial.println(mode1);
+//    Serial.println(mode2);
+//    Serial.println(momentary1);
+//    Serial.println(hazard);
+//    Serial.println(left);
+//    Serial.println(right);
+//
+//    Serial.println(SBUSfailSafe);
+//    Serial.println(SBUSlostFrame);
+//
+//    Serial.println(failSafe);
+//  }
+//#endif
+//
+//  // Invert RC signals
+//  invertRcSignals();
+//
+//  // Falisafe for RC signals
+//  failsafeRcSignals();
+//}
 
 //
 // =======================================================================================================
@@ -1460,6 +1462,21 @@ void engineOnOff() {
 
 void led() {
 
+	  //My edit, using the gear select input channel as ch5 from transmitter 
+  //to determine if the lights should be on. Set the boolean
+  
+  if (pulseWidth[1] > 1700){
+    lightsSwitchOn = true;
+    roofLightsOn = true;
+  }
+  else if (pulseWidth[1] < 1300){
+    lightsSwitchOn = false;
+    roofLightsOn = false;
+  }
+  else {
+    lightsSwitchOn = true;
+    roofLightsOn = false;
+  }																		 
   // Reversing light ----
   if (engineRunning && escInReverse) reversingLight.on();
   else reversingLight.off();
@@ -1480,24 +1497,35 @@ void led() {
     beaconLight1.off();
   }
 
-  // Headlights, tail lights ----
-  if (lightsOn) {
-    if (engineRunning) headLight.on();
-    if (engineStart) headLight.pwm(50);
-    if (escIsBraking) {
-      tailLight.on();  // Taillights (full brightness)
-      brakeLight.on(); // Brakelight on
+//My changes to the lights - Pirmary driver is the on switch for lights and roof lights
+//anything to do with tail lights is if the esc is not braking
+  //Headlights tail lights and roof lights
+  if(lightsSwitchOn) {
+    if (engineStart) {
+      headLight.pwm(50); //Dim the headlights as the engine starts
+      if (!escIsBraking) tailLight.pwm(25); //Dim the tail Lights as the engine Starts
+      if (roofLightsOn) roofLight.pwm(50); //Dim the rooflights whilst the engine starts
     }
     else {
-      tailLight.pwm(50); // Taillights (reduced brightness)
-      brakeLight.pwm(50); // Brakelight reduced brightness
+      headLight.on();
+      if (!escIsBraking) tailLight.pwm(50); //reduced tail lights, full is for braking
+      if (roofLightsOn) {
+        roofLight.on(); //Dim the rooflights whilst the engine starts
+      }
+      else {
+        roofLight.off();
+      }
     }
   }
   else {
-    headLight.off();
-    tailLight.off();
-    brakeLight.off();
+    headLight.off(); //turn the headlights off
+    if (!escIsBraking) tailLight.off(); //Turn of the taillights but only if the ESC isn't braking
+    roofLight.off(); //turn the rooflights off
   }
+
+//My tail light. If the ESC is braking then none of the above will have been done.
+if (escIsBraking) tailLight.on();
+
 
   if (!hazard) {
     // Indicators (turn signals, blinkers) ----
@@ -1521,8 +1549,8 @@ void led() {
   else fogLight.off();
 
   // Roof lights (serial control mode only) ----
-  if (lightsOn && !mode1) roofLight.on();
-  else roofLight.off();
+  // if (lightsOn && !mode1) roofLight.on();
+  // else roofLight.off();
 
   // Sidelights ----
   if (engineOn) sideLight.on();
@@ -1567,12 +1595,16 @@ void gearboxDetection() {
   static unsigned long downShiftingMillis;
 
   // if automatic transmission, always 2nd gear
-  if (automatic || doubleClutch) pulseWidth[1] = 1500;
+  //if (automatic || doubleClutch) pulseWidth[1] = 1500;
 
   // Gear detection
-  if (pulseWidth[1] > 1700) selectedGear = 3;
-  else if (pulseWidth[1] < 1300) selectedGear = 1;
-  else selectedGear = 2;
+  //if (pulseWidth[1] > 1700) selectedGear = 3;
+  //else if (pulseWidth[1] < 1300) selectedGear = 1;
+  //else selectedGear = 2;
+  //my fudge, I want to reuse the gear input as LED input so I only will
+  //have an automatic, so rather than use the input for gear detection
+  //always have selected gear 1
+  selectedGear = 1;																			
 
   // Gear upshifting detection
   if (selectedGear > previousGear) {
@@ -1791,7 +1823,9 @@ void esc() {
           escPulseWidth = constrain(escPulseWidth, pulseMin[2], pulseZero[2]);
         }
 
-        if (pulse == 1 && escPulse == -1) driveState = 4; // Braking backwards
+		// I don't use the the ESC in here. My ESC doesn't brake backward, so change
+		// the logic so drive state is 0 rather than 4 bracking backwards when going 
+        if (pulse == 1 && escPulse == -1) driveState = 0; 
         if (pulse == 0 && escPulse == 0) driveState = 0; // standing still
         break;
 
@@ -1828,18 +1862,19 @@ void esc() {
 
 
     // Calculate a speed value from the pulsewidth signal (used as base for engine sound RPM while clutch is engaged)
+	// My change. I Don'r use this ESC so my speed matches the transmitter throttle, maps revs to my throttle
     if (escPulseWidth > pulseMaxNeutral[2]) {
-      currentSpeed = map(escPulseWidth, pulseMaxNeutral[2], pulseMax[2], 0, 500);
+      currentSpeed = map(pulseWidth[2], pulseMaxNeutral[2], pulseMax[2], 0, 500);
     }
     else if (escPulseWidth < pulseMinNeutral[2]) {
-      currentSpeed = map(escPulseWidth, pulseMinNeutral[2], pulseMin[2], 0, 500);
+      currentSpeed = map(pulseWidth[2], pulseMinNeutral[2], pulseMin[2], 0, 500);
     }
     else currentSpeed = 0;
 
   }
 }
 
-//
+
 // =======================================================================================================
 // LOOP TIME MEASUREMENT
 // =======================================================================================================
