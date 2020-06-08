@@ -1,4 +1,21 @@
 # This is my adapted version for my FTX Kanyon, using gear shift to control the lights, and my own setup for a single gear to make the engine sound correct for when I am using a crawler course.
+
+Using the amazing work done by the DIYGuy999, built my own prototype board with what I needed from his work.
+Items I have changed:
+ - Disabled SBUS
+ - Custom adjustments.h for defender V8 including no clutch to match my ESC.
+ - Changed drive state logic as my ESC doesn't have a reverse brake
+ - Changed the current spead to be based on transmitter throttle so more in sync with my ESC
+ - Fixed to gear 1 
+ - Re used the gear shift input and re assigned to LED lights. Gives me the ability to control headlights/side light and rooflights from CH5 pot on my transmitter
+ - Allow lights controlled by CH5 to be on even if engine off, all lights dim during engine start as per original logic
+ 
+A lot of the orginial code is in there unused incase I want to add a shaker and more light (in adition to the standard factory fit).
+
+Shared for my own version control and inspiration. 
+
+Original Readme:
+ 
 # This is an Arduino RC engine sound & light controller for ESP32
 It's based on the ATmega 328 version: https://github.com/TheDIYGuy999/Rc_Engine_Sound
 and on bitlunis Halloween example: https://github.com/bitluni/MotionPumpkin
